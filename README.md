@@ -4,16 +4,18 @@ Bộ nén văn bản **không mất dữ liệu (lossless)** dùng **mã Huffman
 A small, lossless **text compressor** using **Huffman coding**, written in Python.
 
 > Bài tập lớn môn *Application Algorithm*. Tài liệu song ngữ Việt–Anh.
-> Quy trình phát triển theo phase: [.claude/TASKS.md](.claude/TASKS.md).
+>
+> Ghi chú: repo này chứa **mã nguồn + dataset**. Tài liệu chi tiết, báo cáo và slide
+> (`docs/`, `report/`, `slides/`) là một phần của bản nộp nhưng **không kèm trong repo mã nguồn**.
 
 ## ✨ Tính năng / Features
 
 - Nén & giải nén **byte-exact** (an toàn UTF-8: tiếng Việt có dấu, emoji, và mọi dữ liệu nhị phân).
-- Định dạng file `.huf` **tự chứa** (self-contained) — xem [docs/format.md](docs/format.md).
+- Định dạng file `.huf` **tự chứa** (self-contained): `MAGIC "HUF1"` + version + bảng tần suất + payload bit; giải nén không cần bản gốc.
 - CLI: `compress`, `decompress`, `stats`.
 - Thống kê: compression ratio, space saving, BPC, entropy, average code length, thời gian.
 - Benchmark vs **RLE** & **Shannon-Fano** trên **corpus chuẩn** (Canterbury, Calgary).
-- Trực quan hoá: cây Huffman, histogram tần suất, biểu đồ so sánh.
+- Trực quan hoá: cây Huffman, histogram tần suất, biểu đồ so sánh; kèm **visualizer tương tác** (`web/index.html`).
 - 80 test tự động, coverage core ≥ 90%.
 
 ## 📦 Cài đặt / Installation
@@ -75,13 +77,30 @@ Huffman **luôn ≥ Shannon-Fano** và BPC luôn **sát trên entropy H** (đún
 
 ## 🔁 Tái tạo kết quả / Reproduce
 
+Corpus chuẩn (Canterbury/Calgary) đã có sẵn trong `data/`. Chỉ các tarball gốc `*.tar.gz` là không kèm — tải lại khi cần:
+
 ```bash
-python data/make_synthetic.py          # sinh corpus random/repeated/vietnamese
+curl -L -o data/cantrbry.tar.gz https://corpus.canterbury.ac.nz/resources/cantrbry.tar.gz
+tar -xzf data/cantrbry.tar.gz -C data/canterbury
+curl -L -o data/calgary.tar.gz  https://corpus.canterbury.ac.nz/resources/calgary.tar.gz
+tar -xzf data/calgary.tar.gz  -C data/calgary
+```
+
+Sinh dữ liệu tổng hợp và chạy đo:
+
+```bash
+python data/make_synthetic.py                        # sinh corpus random/repeated/vietnamese
 PYTHONPATH=src python -m huffman.analysis.benchmark   # -> results/benchmark.csv, summary.md
 PYTHONPATH=src python -m huffman.analysis.visualize   # -> results/figures/*.png
 ```
 
-Corpus chuẩn (Canterbury/Calgary) tải bằng: xem [docs/user_guide.md](docs/user_guide.md#lấy-corpus-chuẩn).
+## 🌳 Visualizer tương tác / Interactive demo
+
+Minh hoạ từng bước: đếm tần suất → xây cây → encode → decode.
+
+```bash
+cd web && python -m http.server 8000     # rồi mở http://localhost:8000
+```
 
 ## 🧪 Chạy test / Tests
 
@@ -103,19 +122,8 @@ src/huffman/     # mã nguồn, tách theo chức năng:
 tests/           # 80 test (unit, property, integration, CLI)
 data/            # corpora (Canterbury, Calgary, synthetic)
 results/         # benchmark.csv, summary.md, figures/
-docs/            # requirements, theory, research, format, architecture, guides
-report/          # báo cáo học thuật
-slides/          # slide thuyết trình
+web/             # visualizer tương tác (index.html)
 ```
-
-## 📚 Tài liệu / Documentation
-
-- Lý thuyết & chứng minh tối ưu: [docs/theory.md](docs/theory.md)
-- Khảo sát thuật toán: [docs/research.md](docs/research.md)
-- Kiến trúc: [docs/architecture.md](docs/architecture.md) · Định dạng file: [docs/format.md](docs/format.md)
-- Hướng dẫn dùng: [docs/user_guide.md](docs/user_guide.md) · Nhà phát triển: [docs/developer_guide.md](docs/developer_guide.md)
-- [docs/faq.md](docs/faq.md) · [docs/troubleshooting.md](docs/troubleshooting.md)
-- Báo cáo đầy đủ: [report/report.md](report/report.md)
 
 ## 📄 License
 
