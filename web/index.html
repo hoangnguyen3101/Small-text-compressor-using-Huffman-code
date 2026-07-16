@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Huffman Visualizer — Xây cây · Encode · Decode</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --ink:#e2e8f0; --muted:#94a3b8;
+    --line:#334155; --accent:#38bdf8; --accent2:#f472b6; --leaf:#22c55e; --internal:#64748b;
+    --hi:#f59e0b; --hi2:#fbbf24; --bit0:#38bdf8; --bit1:#f472b6; --good:#4ade80;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#111c33,#0f172a)}
+  header h1{margin:0;font-size:1.25rem}
+  header p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+  label{font-size:.8rem;color:var(--muted);display:block;margin-bottom:6px}
+  textarea,input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--ink);
+    padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:.95rem}
+  textarea{resize:vertical;min-height:52px}
+  button{background:var(--accent);color:#04263a;border:none;border-radius:8px;padding:9px 15px;font-weight:600;cursor:pointer;font-size:.9rem}
+  button:hover{filter:brightness(1.08)}
+  button.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{padding:9px 16px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;font-weight:600;font-size:.9rem;color:var(--muted)}
+  .tab.active{background:var(--accent);color:#04263a;border-color:var(--accent)}
+  .grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  svg{width:100%;height:auto;background:var(--panel2);border-radius:10px;border:1px solid var(--line)}
+  table{border-collapse:collapse;width:100%;font-size:.82rem}
+  th,td{border:1px solid var(--line);padding:4px 8px;text-align:center}
+  th{background:var(--panel2);color:var(--muted);font-weight:600}
+  code,.mono{font-family:ui-monospace,Consolas,monospace}
+  .bit0{color:var(--bit0);font-weight:700}
+  .bit1{color:var(--bit2,var(--bit1));font-weight:700}
+  .desc{min-height:44px;background:var(--panel2);border-radius:8px;padding:10px 12px;border:1px solid var(--line);font-size:.9rem}
+  .out{font-family:ui-monospace,Consolas,monospace;background:#0b1220;border:1px solid var(--line);border-radius:8px;padding:10px;
+    word-break:break-all;min-height:44px;font-size:.95rem}
+  .out .cursor{background:var(--hi);color:#04263a;border-radius:3px;padding:0 2px}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.8rem;margin:2px}
+  .muted{color:var(--muted)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:8px}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .stat{font-size:.82rem;color:var(--muted)}
+  .stat b{color:var(--ink)}
+  .hidden{display:none}
+  .foot{color:var(--muted);font-size:.8rem;text-align:center;padding:10px 0 30px}
+  .kbd{font-family:ui-monospace,monospace;background:#0b1220;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+  <h1> Huffman Visualizer</h1>
+  <p>Minh hoạ trực quan từng bước: <b>xây cây</b> → duyệt nút để <b>Encode</b> → duyệt nút để <b>Decode</b>. Khớp luật dựng cây <span class="mono">(freq, order)</span> của <span class="mono">core/huffman.py</span>.</p>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <label>Văn bản đầu vào / Input text</label>
+    <textarea id="inp">huffman coding</textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="build">▶ Phân tích &amp; Xây cây</button>
+      <button class="ghost" id="ex1">VD: "abracadabra"</button>
+      <button class="ghost" id="ex2">VD: Tiếng Việt</button>
+      <span class="stat" id="summary"></span>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--leaf)"></span>Lá (ký hiệu)</span>
+      <span><span class="dot" style="background:var(--internal)"></span>Nút trong</span>
+      <span><span class="dot" style="background:var(--hi)"></span>Đang duyệt</span>
+      <span><span class="bit0">0</span> = sang trái &nbsp; <span class="bit1">1</span> = sang phải</span>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="tabs">
+      <div class="tab active" data-tab="count">1 · Đếm tần suất</div>
+      <div class="tab" data-tab="build">2 · Xây cây</div>
+      <div class="tab" data-tab="encode">3 · Encode</div>
+      <div class="tab" data-tab="decode">4 · Decode</div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div id="svgbox"></div>
+        <!-- Controls -->
+        <div class="row" style="margin-top:12px">
+          <button class="ghost" id="first">⏮</button>
+          <button class="ghost" id="prev">◀ Lùi</button>
+          <button id="play">▶ Chạy</button>
+          <button class="ghost" id="next">Tiến ▶</button>
+          <button class="ghost" id="last">⏭</button>
+          <span class="stat">Tốc độ</span>
+          <input type="range" id="speed" min="150" max="1400" value="650" step="50" style="width:120px">
+          <span class="stat" id="stepno"></span>
+        </div>
+        <div class="desc" id="desc" style="margin-top:10px"></div>
+      </div>
+
+      <div>
+        <!-- Encode input -->
+        <div class="card" id="encPanel">
+          <label>Chuỗi bit đang tạo (Encode) / Output bits</label>
+          <div class="out" id="encOut"></div>
+          <div class="stat" id="encStat" style="margin-top:6px"></div>
+        </div>
+        <!-- Decode input -->
+        <div class="card hidden" id="decPanel">
+          <label>Chuỗi bit để giải mã / Input bits (sửa được)</label>
+          <input type="text" id="decBits" class="mono" />
+          <button class="ghost" id="decReload" style="margin-top:8px">↻ Nạp lại &amp; giải mã</button>
+          <label style="margin-top:10px">Văn bản khôi phục / Decoded</label>
+          <div class="out" id="decOut"></div>
+        </div>
+
+        <div class="card">
+          <label>Bảng tần suất &amp; mã / Frequency &amp; codes</label>
+          <div style="max-height:280px;overflow:auto">
+            <table id="tbl"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    Chạy localhost: mở terminal trong thư mục <span class="kbd">web/</span> rồi
+    <span class="kbd">python -m http.server 8000</span> → truy cập <span class="kbd">http://localhost:8000</span>.
+  </div>
+</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------------------
+// Huffman core (khớp core/huffman.py: sort theo symbol, order tăng dần, tie-break (freq, order))
+// ---------------------------------------------------------------------------
+let NID = 0;
+function makeNode(o){ return Object.assign({id:NID++, freq:0, symbol:null, left:null, right:null, order:0}, o); }
+
+function buildTree(text){
+  const freq = {};
+  for(const ch of Array.from(text)) freq[ch] = (freq[ch]||0)+1;
+  const symbols = Object.keys(freq).sort((a,b)=> a.codePointAt(0)-b.codePointAt(0));
+  let order = 0;
+  let pq = symbols.map(ch => makeNode({freq:freq[ch], symbol:ch, order:order++}));
+  const mergeSteps = [];           // các bước gộp (để animate build)
+  if(pq.length === 0) return {root:null, freq, mergeSteps};
+  if(pq.length === 1){
+    const only = pq[0];
+    const root = makeNode({freq:only.freq, left:only, order:order++});
+    mergeSteps.push({parent:root, a:only, b:null});
+    return {root, freq, mergeSteps};
+  }
+  const popMin = () => { pq.sort((x,y)=> (x.freq-y.freq) || (x.order-y.order)); return pq.shift(); };
+  while(pq.length > 1){
+    const a = popMin(), b = popMin();
+    const parent = makeNode({freq:a.freq+b.freq, left:a, right:b, order:order++});
+    mergeSteps.push({parent, a, b});
+    pq.push(parent);
+  }
+  return {root: pq[0], freq, mergeSteps};
+}
+
+function buildCodes(root){
+  const codes = {};
+  if(!root) return codes;
+  (function walk(n, pfx){
+    if(!n.left && !n.right){ codes[n.symbol] = pfx || "0"; return; }
+    if(n.left)  walk(n.left,  pfx+"0");
+    if(n.right) walk(n.right, pfx+"1");
+  })(root, "");
+  return codes;
+}
+
+// Layout: leaf lấy x tuần tự, nút trong = trung bình con
+function layout(root){
+  let leaf = 0, maxDepth = 0;
+  (function pos(n, d){
+    n.depth = d; maxDepth = Math.max(maxDepth, d);
+    if(!n.left && !n.right){ n.gx = leaf++; return; }
+    const xs = [];
+    if(n.left){ pos(n.left, d+1); xs.push(n.left.gx); }
+    if(n.right){ pos(n.right, d+1); xs.push(n.right.gx); }
+    n.gx = xs.reduce((a,b)=>a+b,0)/xs.length;
+  })(root, 0);
+  return {leaves: Math.max(leaf,1), depth: maxDepth};
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+const HX = 66, VY = 84, R = 19, MX = 34, MY = 30;
+function disp(ch){
+  if(ch===" ") return "␣"; if(ch==="\n") return "⏎"; if(ch==="\t") return "⇥";
+  return ch;
+}
+function edgeKey(p,c){ return p.id+"-"+c.id; }
+
+let STATE = null; // {root, freq, codes, dims, allNodes, allEdges}
+
+function collect(root){
+  const nodes=[], edges=[];
+  (function walk(n){
+    nodes.push(n);
+    if(n.left){ edges.push({p:n,c:n.left,bit:"0"}); walk(n.left); }
+    if(n.right){ edges.push({p:n,c:n.right,bit:"1"}); walk(n.right); }
+  })(root);
+  return {nodes, edges};
+}
+
+function renderTree(opt){
+  opt = opt || {};
+  const hiNodes = new Set(opt.hiNodes||[]);
+  const hiEdges = new Set(opt.hiEdges||[]);
+  const revealMax = (opt.revealMax===undefined)? Infinity : opt.revealMax;
+  const {root, dims, allNodes, allEdges} = STATE;
+  if(!root){ document.getElementById("svgbox").innerHTML='<p class="muted" style="padding:20px">Cây rỗng (input rỗng).</p>'; return; }
+  const W = dims.leaves*HX + MX*2, H = (dims.depth+1)*VY + MY*2;
+  const X = n => MX + n.gx*HX + R + (dims.leaves*HX - (dims.leaves-1)*HX)/2 - HX/2 + (HX-2*R)/2;
+  const px = n => MX + n.gx*HX + HX/2;
+  const py = n => MY + n.depth*VY + R;
+  const shown = n => n.order <= revealMax || (!n.left && !n.right); // lá luôn hiện
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  // edges
+  for(const e of allEdges){
+    if(!shown(e.c) || !shown(e.p)) continue;
+    const k = edgeKey(e.p,e.c), on = hiEdges.has(k);
+    const x1=px(e.p), y1=py(e.p), x2=px(e.c), y2=py(e.c);
+    s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${on?'var(--hi)':'var(--line)'}" stroke-width="${on?4:2}"/>`;
+    const mx=(x1+x2)/2, my=(y1+y2)/2;
+    s += `<circle cx="${mx}" cy="${my}" r="10" fill="var(--panel)" stroke="${e.bit==='0'?'var(--bit0)':'var(--bit1)'}"/>`;
+    s += `<text x="${mx}" y="${my+4}" text-anchor="middle" font-size="12" font-weight="700" fill="${e.bit==='0'?'var(--bit0)':'var(--bit1)'}">${e.bit}</text>`;
+  }
+  // nodes
+  for(const n of allNodes){
+    if(!shown(n)) continue;
+    const leaf = !n.left && !n.right, on = hiNodes.has(n.id);
+    const fill = on? 'var(--hi)' : (leaf? 'var(--leaf)':'var(--internal)');
+    const stroke = on? 'var(--hi2)' : 'var(--line)';
+    s += `<circle cx="${px(n)}" cy="${py(n)}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="${on?4:2}"/>`;
+    s += `<text x="${px(n)}" y="${py(n)+4}" text-anchor="middle" font-size="12" font-weight="700" fill="#04263a">${n.freq}</text>`;
+    if(leaf){
+      s += `<text x="${px(n)}" y="${py(n)+R+16}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">'${disp(n.symbol)}'</text>`;
+    }
+  }
+  s += `</svg>`;
+  document.getElementById("svgbox").innerHTML = s;
+}
+
+// ---------------------------------------------------------------------------
+// Step players
+// ---------------------------------------------------------------------------
+function pathTo(root, code){
+  const nodes=[root], edges=[];
+  let n=root;
+  for(const bit of code){
+    const nx = bit==='0'? n.left : n.right;
+    edges.push(edgeKey(n,nx)); nodes.push(nx); n=nx;
+  }
+  return {nodes, edges};
+}
+
+function countSteps(text){   // BƯỚC 1: quét văn bản, đếm tần suất
+  const chars = Array.from(text);
+  const steps = [];
+  const run = {};
+  steps.push({mode:'count', pos:-1, snap:{}, desc:`<b>Bước 1 — Đếm tần suất.</b> Quét văn bản từ trái sang phải; mỗi ký tự làm tăng bộ đếm của chính nó.`});
+  chars.forEach((ch,i)=>{
+    run[ch] = (run[ch]||0)+1;
+    steps.push({mode:'count', pos:i, cur:ch, snap:{...run},
+      desc:`Đọc '<b>${disp(ch)}</b>' (vị trí ${i+1}/${chars.length}) → tần suất của '${disp(ch)}' = <b>${run[ch]}</b>.`});
+  });
+  steps.push({mode:'count', pos:chars.length, snap:{...run},
+    desc:`Xong: <b>${Object.keys(run).length}</b> ký hiệu phân biệt. Đưa mỗi ký hiệu kèm tần suất vào <b>hàng đợi ưu tiên (min-heap)</b> → sẵn sàng sang bước Xây cây.`});
+  return steps;
+}
+
+function renderCount(st){
+  const chars = Array.from(currentText());
+  let h = `<div style="padding:16px">`;
+  h += `<div class="muted" style="margin-bottom:8px;font-size:.8rem">Văn bản đang quét:</div><div style="line-height:2.4;margin-bottom:16px">`;
+  chars.forEach((ch,i)=>{
+    let bg='var(--panel)', col='var(--muted)';
+    if(i < st.pos){ bg='#14324a'; col='var(--ink)'; }
+    if(i === st.pos){ bg='var(--hi)'; col='#04263a'; }
+    h += `<span class="mono" style="display:inline-block;min-width:24px;text-align:center;padding:5px 7px;margin:2px;border-radius:6px;background:${bg};color:${col};border:1px solid var(--line);font-weight:700">${disp(ch)}</span>`;
+  });
+  h += `</div>`;
+  const snap = st.snap||{};
+  const syms = Object.keys(snap).sort((a,b)=> a.codePointAt(0)-b.codePointAt(0));
+  if(syms.length){
+    h += `<div class="muted" style="margin-bottom:6px;font-size:.8rem">Bảng tần suất đang xây:</div>`;
+    h += `<div style="overflow:auto"><table style="width:auto"><tr><th>Ký hiệu</th>` +
+         syms.map(s=>`<td class="mono">'${disp(s)}'</td>`).join('') + `</tr><tr><th>Tần suất</th>` +
+         syms.map(s=>{const on=s===st.cur; return `<td style="${on?'background:var(--hi);color:#04263a;font-weight:700':''}">${snap[s]}</td>`;}).join('') + `</tr></table></div>`;
+  }
+  h += `</div>`;
+  document.getElementById('svgbox').innerHTML = h;
+}
+
+function buildSteps(){        // animate xây cây theo thứ tự tạo nút cha
+  const steps=[]; const ms = STATE.mergeSteps;
+  steps.push({reveal:-1, hiNodes:[], desc:`Khởi tạo: mỗi ký hiệu là một lá. Đưa tất cả vào hàng đợi ưu tiên (min-heap) theo tần suất.`});
+  for(const m of ms){
+    const kids=[m.a.id]; if(m.b) kids.push(m.b.id);
+    const hiE=[]; if(m.a) hiE.push(edgeKey(m.parent,m.a)); if(m.b) hiE.push(edgeKey(m.parent,m.b));
+    const bpart = m.b? ` và <b>${m.b.freq}</b>` : '';
+    steps.push({reveal:m.parent.order, hiNodes:[m.parent.id, ...kids], hiEdges:hiE,
+      desc: m.b? `Lấy 2 nút nhỏ nhất: freq <b>${m.a.freq}</b>${bpart} → tạo nút cha freq <b>${m.parent.freq}</b> (trái=nút lấy trước).`
+                : `Trường hợp 1 ký hiệu: tạo nút gốc để ký hiệu có mã 1 bit "0".`});
+  }
+  steps.push({reveal:Infinity, hiNodes:[], desc:`Hoàn tất: còn 1 nút = <b>gốc</b>. Mã = đường đi gốc→lá (0=trái, 1=phải).`});
+  return steps.map(st => ({...st, mode:'build'}));
+}
+
+function encodeSteps(text){
+  const steps=[]; let bits="";
+  const chars = Array.from(text);
+  steps.push({mode:'encode', hiNodes:[STATE.root?STATE.root.id:-1], hiEdges:[], bits:"", desc:`Bắt đầu Encode: với mỗi ký tự, đi từ <b>gốc</b> xuống lá của nó, ghi 0 khi rẽ trái, 1 khi rẽ phải.`});
+  for(const ch of chars){
+    const code = STATE.codes[ch];
+    const {nodes, edges} = pathTo(STATE.root, code);
+    for(let i=1;i<nodes.length;i++){        // từng bước rẽ nhánh
+      const bit = code[i-1];
+      steps.push({mode:'encode', hiNodes:nodes.slice(0,i+1).map(n=>n.id), hiEdges:edges.slice(0,i),
+        bits: bits + code.slice(0,i), cursorFrom: bits.length,
+        desc:`Ký tự '<b>${disp(ch)}</b>': rẽ ${bit==='0'?'<span class="bit0">trái (0)</span>':'<span class="bit1">phải (1)</span>'} → mã tạm "<span class="mono">${code.slice(0,i)}</span>".`});
+    }
+    bits += code;
+    steps.push({mode:'encode', hiNodes:nodes.map(n=>n.id), hiEdges:edges, bits, cursorFrom: bits.length-code.length,
+      desc:`Chạm <b>lá '${disp(ch)}'</b> → phát mã <span class="mono">${code}</span>. Tổng bit: ${bits.length}.`});
+  }
+  steps.push({mode:'encode', hiNodes:[], hiEdges:[], bits, desc:`Xong Encode: chuỗi <b>${bits.length}</b> bit. Đây chính là payload trong file .huf.`});
+  STATE.encodedBits = bits;
+  return steps;
+}
+
+function decodeSteps(bits){
+  const steps=[]; let out=""; let n=STATE.root;
+  steps.push({mode:'decode', hiNodes:[STATE.root?STATE.root.id:-1], hiEdges:[], out:"", desc:`Bắt đầu Decode: đứng ở <b>gốc</b>, đọc lần lượt từng bit.`});
+  if(!STATE.root) return steps;
+  for(let i=0;i<bits.length;i++){
+    const bit = bits[i];
+    if(bit!=='0' && bit!=='1'){ steps.push({mode:'decode', hiNodes:[n.id], out, bitIdx:i, desc:`Bỏ qua ký tự không hợp lệ '${bits[i]}'.`}); continue; }
+    const nx = bit==='0'? n.left : n.right;
+    if(!nx){ steps.push({mode:'decode', hiNodes:[n.id], out, bitIdx:i, desc:`⚠ Bit ${bit} không có nhánh — chuỗi bit hỏng.`}); break; }
+    const ek = edgeKey(n,nx); n = nx;
+    steps.push({mode:'decode', hiNodes:[n.id], hiEdges:[ek], out, bitIdx:i,
+      desc:`Bit <b>${bit}</b>: rẽ ${bit==='0'?'<span class="bit0">trái</span>':'<span class="bit1">phải</span>'}.`});
+    if(!n.left && !n.right){
+      out += n.symbol;
+      steps.push({mode:'decode', hiNodes:[n.id], hiEdges:[], out, bitIdx:i,
+        desc:`Chạm <b>lá '${disp(n.symbol)}'</b> → xuất '${disp(n.symbol)}', quay về gốc.`});
+      n = STATE.root;
+    }
+  }
+  steps.push({mode:'decode', hiNodes:[], hiEdges:[], out, desc:`Xong Decode: khôi phục "<b>${escapeHtml(out)}</b>" (${Array.from(out).length} ký tự).`});
+  return steps;
+}
+
+function escapeHtml(s){ return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/\n/g,'⏎').replace(/ /g,'␣'); }
+
+// ---------------------------------------------------------------------------
+// Player controller
+// ---------------------------------------------------------------------------
+let steps=[], idx=0, timer=null, curTab='build';
+
+function renderStep(){
+  const st = steps[idx] || {};
+  if(st.mode==='count'){
+    renderCount(st);
+  } else {
+    const opt = {hiNodes:st.hiNodes||[], hiEdges:st.hiEdges||[]};
+    if(st.mode==='build') opt.revealMax = st.reveal;
+    renderTree(opt);
+  }
+  document.getElementById("desc").innerHTML = st.desc || "";
+  document.getElementById("stepno").textContent = `Bước ${idx+1}/${steps.length}`;
+
+  // encode output panel
+  if(curTab==='encode'){
+    const bits = st.bits||"";
+    let html="";
+    for(let i=0;i<bits.length;i++){
+      const cls = bits[i]==='0'?'bit0':'bit1';
+      const cursor = (st.cursorFrom!==undefined && i>=st.cursorFrom)?' cursor':'';
+      html += `<span class="${cls}${cursor?' cursor':''}">${bits[i]}</span>`;
+    }
+    document.getElementById("encOut").innerHTML = html || '<span class="muted">—</span>';
+    document.getElementById("encStat").innerHTML = `Độ dài: <b>${bits.length}</b> bit`;
+  }
+  // decode output panel
+  if(curTab==='decode'){
+    const out = st.out||"";
+    document.getElementById("decOut").innerHTML = out? escapeHtml(out) : '<span class="muted">—</span>';
+  }
+  document.getElementById("prev").disabled = idx<=0;
+  document.getElementById("first").disabled = idx<=0;
+  document.getElementById("next").disabled = idx>=steps.length-1;
+  document.getElementById("last").disabled = idx>=steps.length-1;
+}
+
+function setSteps(newSteps){ pause(); steps=newSteps; idx=0; renderStep(); }
+function go(d){ idx = Math.max(0, Math.min(steps.length-1, idx+d)); renderStep(); if(idx>=steps.length-1) pause(); }
+function play(){
+  if(timer){ pause(); return; }
+  if(idx>=steps.length-1) idx=0;
+  document.getElementById("play").textContent="⏸ Dừng";
+  const sp = +document.getElementById("speed").value;
+  timer = setInterval(()=>{ if(idx>=steps.length-1){ pause(); return; } go(1); }, sp);
+}
+function pause(){ if(timer){ clearInterval(timer); timer=null; } document.getElementById("play").textContent="▶ Chạy"; }
+
+// ---------------------------------------------------------------------------
+// Tabs & wiring
+// ---------------------------------------------------------------------------
+function switchTab(tab){
+  curTab=tab;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===tab));
+  document.getElementById("encPanel").classList.toggle("hidden", tab!=='encode');
+  document.getElementById("decPanel").classList.toggle("hidden", tab!=='decode');
+  if(tab==='count') setSteps(countSteps(currentText()));
+  if(tab==='build') setSteps(buildSteps());
+  if(tab==='encode') setSteps(encodeSteps(currentText()));
+  if(tab==='decode'){ document.getElementById("decBits").value = STATE.encodedBits||""; setSteps(decodeSteps(STATE.encodedBits||"")); }
+}
+
+function currentText(){ return document.getElementById("inp").value; }
+
+function renderTable(){
+  const {freq, codes} = STATE;
+  const syms = Object.keys(freq).sort((a,b)=> (freq[b]-freq[a]) || a.codePointAt(0)-b.codePointAt(0));
+  let h = `<tr><th>Ký hiệu</th><th>Tần suất</th><th>Mã Huffman</th><th>Độ dài</th></tr>`;
+  for(const ch of syms){
+    const code = codes[ch]||"";
+    const colored = Array.from(code).map(b=>`<span class="${b==='0'?'bit0':'bit1'}">${b}</span>`).join("");
+    h += `<tr><td class="mono">'${disp(ch)}'</td><td>${freq[ch]}</td><td class="mono">${colored}</td><td>${code.length}</td></tr>`;
+  }
+  document.getElementById("tbl").innerHTML = h;
+}
+
+function build(){
+  NID=0;
+  const text = currentText();
+  const {root, freq, mergeSteps} = buildTree(text);
+  const codes = buildCodes(root);
+  let dims = {leaves:1, depth:0};
+  let coll = {nodes:[], edges:[]};
+  if(root){ dims = layout(root); coll = collect(root); }
+  STATE = {root, freq, codes, mergeSteps, dims, allNodes:coll.nodes, allEdges:coll.edges, encodedBits:""};
+
+  // tổng hợp
+  const nchar = Array.from(text).length, nsym = Object.keys(freq).length;
+  let totalBits=0; for(const ch in freq) totalBits += freq[ch]*(codes[ch]||"").length;
+  const H = entropy(freq, nchar);
+  const L = nchar? totalBits/nchar : 0;
+  document.getElementById("summary").innerHTML =
+    `${nchar} ký tự · ${nsym} ký hiệu · payload <b>${totalBits}</b> bit · L=<b>${L.toFixed(3)}</b> · H=<b>${H.toFixed(3)}</b> bit/kh`;
+
+  renderTable();
+  document.getElementById("app").classList.remove("hidden");
+  switchTab('count');
+}
+
+function entropy(freq, total){
+  if(!total) return 0; let h=0;
+  for(const ch in freq){ const p=freq[ch]/total; h -= p*Math.log2(p); }
+  return h;
+}
+
+// events
+document.getElementById("build").onclick = build;
+document.getElementById("ex1").onclick = ()=>{ document.getElementById("inp").value="abracadabra"; build(); };
+document.getElementById("ex2").onclick = ()=>{ document.getElementById("inp").value="nén dữ liệu"; build(); };
+document.querySelectorAll(".tab").forEach(t=> t.onclick=()=>switchTab(t.dataset.tab));
+document.getElementById("next").onclick=()=>go(1);
+document.getElementById("prev").onclick=()=>go(-1);
+document.getElementById("first").onclick=()=>{ idx=0; renderStep(); };
+document.getElementById("last").onclick=()=>{ idx=steps.length-1; renderStep(); pause(); };
+document.getElementById("play").onclick=play;
+document.getElementById("speed").oninput=()=>{ if(timer){ pause(); play(); } };
+document.getElementById("decReload").onclick=()=>{ const b=document.getElementById("decBits").value.trim(); setSteps(decodeSteps(b)); };
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT') return;
+  if(e.key==='ArrowRight') go(1); if(e.key==='ArrowLeft') go(-1); if(e.key===' '){ e.preventDefault(); play(); }
+});
+
+// khởi động
+build();
+</script>
+</body>
+</html>

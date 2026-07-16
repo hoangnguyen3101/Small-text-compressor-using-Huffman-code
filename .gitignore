@@ -1,0 +1,44 @@
+# ============================================================
+# Chỉ commit CODE (src/, tests/) và DATASET (data/).
+# Bỏ qua tài liệu, báo cáo, slide và các tệp sinh ra.
+# ============================================================
+
+# Tài liệu / báo cáo / slide (không commit)
+docs/
+report/
+slides/
+
+# Quy trình skill nội bộ (không commit)
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual env
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Downloaded corpus tarballs (re-fetch via docs/user_guide.md)
+data/*.tar.gz
+
+# Tệp nén tạm khi chạy thử (không phải dataset gốc)
+*.huf
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
